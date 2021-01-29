@@ -1,4 +1,8 @@
 // Databricks notebook source
+import scala.util.control._
+
+// COMMAND ----------
+
 val configs = Map(
   "fs.azure.account.auth.type" -> "OAuth",
   "fs.azure.account.oauth.provider.type" -> "org.apache.hadoop.fs.azurebfs.oauth2.ClientCredsTokenProvider",
@@ -8,15 +12,26 @@ val configs = Map(
 
 val mounts = dbutils.fs.mounts()
 val mountPath = "/mnt/data"
-val isExist = false
+var isExist: Boolean = false
+val outer = new Breaks;
 
-for(mount <- mounts) {
-  if(mount.mountPoint == mountPath) {
-    isExist = true
-    break
+outer.breakable {
+  for(mount <- mounts) {
+    if(mount.mountPoint == mountPath) {
+      isExist = true;
+      outer.break;
+    }
   }
 }
 
 // COMMAND ----------
 
-println("Exist Status : " + isExist)
+if(isExist) {
+  println("Volume Mounting for Case Study Data Already Exist!")
+}
+else {
+  dbutils.fs.mount(
+    source = "abfss://casestudydata@iomegadls.dfs.core.windows.net/",
+    mountPoint = "/mnt/data",
+    extraConfigs = configs)
+}
